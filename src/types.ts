@@ -3,63 +3,92 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export interface Siswa {
-  id: string;
-  nis: string;
-  nama: string;
-  kelas: string;
-  angkatan: string;
-  tagihanSpp: number; // Jumlah SPP per bulan
-  statusSpp: Record<string, 'Lunas' | 'Belum_Bayar' | string>; // key: 'YYYY-MM' e.g. '2026-05': 'Lunas' atau 'Kurang:150000'
-  emailOrangTua?: string;
-  teleponOrangTua?: string;
+export type UserRole = 'Admin' | 'Operator' | 'Guru' | 'Pegawai' | 'Siswa' | 'Kepala Sekolah';
+
+export interface User {
+  ID_USER: string;
+  NIP_NIS: string;
+  Nama: string;
+  JK: 'Laki-laki' | 'Perempuan';
+  Jabatan: string;
+  Unit: string;
+  Email: string;
+  Password?: string;
+  Role: UserRole;
+  Status: 'Aktif' | 'Nonaktif';
 }
 
-export interface Transaksi {
-  id: string; // Kuitansi number, e.g., KWT-20260529-0001
-  siswaId: string;
-  siswaNis: string;
-  siswaNama: string;
-  siswaKelas: string;
-  tanggal: string; // YYYY-MM-DD HH:mm:ss
-  jenisPembayaran: 'SPP' | 'Uang Gedung' | 'Seragam' | 'Kegiatan' | 'Lainnya';
-  bulanCovered?: string; // e.g. "2026-05" jika jenisPembayaran = 'SPP'
-  jumlah: number;
-  metode: 'Cash' | 'Transfer';
-  keterangan: string;
-  penerima: string;
-  originalTagihan?: number; // Jumlah tagihan asli sebelum dicicil/kurang
-  sisaTunggakan?: number; // Sisa tunggakan yang belum dibayar
+export interface FaceData {
+  ID_FACE: string;
+  ID_USER: string;
+  Face_Descriptor: number[][]; // Array of descriptors
+  Foto_Wajah: string; // Base64 image
+  Tanggal_Register: string;
 }
 
-export interface AppConfig {
-  sheetUrl: string;
-  namaSekolah: string;
-  alamatSekolah: string;
-  teleponSekolah: string;
-  penerimaDefault: string;
-  namaBank?: string;
-  rekeningBank?: string;
-  pemilikRekening?: string;
-  merchantId?: string;
-  logoSekolah?: string;
+export interface Location {
+  ID_LOKASI: string;
+  Nama_Lokasi: string;
+  Latitude: number;
+  Longitude: number;
+  Radius_Meter: number;
+  Status: 'Aktif' | 'Nonaktif';
 }
 
-export interface BiayaSekolah {
-  id: string;
-  nama: string;
-  kategori: 'SPP' | 'Uang Gedung' | 'Seragam' | 'Kegiatan' | 'Lainnya';
-  jumlah: number;
-  tenggatWaktu: string; // Format: YYYY-MM-DD
+export interface Shift {
+  ID_SHIFT: string;
+  Nama_Shift: string; // e.g., "Shift Pagi", "Shift Siang", "Shift Malam"
+  Jam_Masuk: string;  // e.g., "07:30"
+  Jam_Pulang: string; // e.g., "16:00"
 }
 
-export interface NotifikasiLog {
-  id: string;
-  siswaId: string;
-  siswaNama: string;
-  tipe: 'Email' | 'WhatsApp';
-  kontakTujuan: string;
-  pesan: string;
-  tanggalKirim: string;
-  status: 'Sukses' | 'Gagal';
+export interface Attendance {
+  ID_ABSEN: string;
+  Tanggal: string; // YYYY-MM-DD
+  ID_USER: string;
+  Nama: string;
+  Jam_Masuk: string;
+  Jam_Pulang: string;
+  Status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpha' | 'Dinas Luar';
+  Latitude: number;
+  Longitude: number;
+  Jarak: number; // in meters
+  Foto_Masuk: string; // Base64
+  Foto_Pulang: string; // Base64
+  ID_SHIFT?: string; // Opt shift association
+  Nama_Shift?: string;
+}
+
+export interface IzinRequest {
+  ID_IZIN: string;
+  ID_USER: string;
+  Nama: string;
+  Tanggal: string;
+  Jenis: 'Izin' | 'Sakit' | 'Cuti' | 'Dinas Luar';
+  Alasan: string;
+  Lampiran: string; // base64 or link text
+  Status: 'Pending' | 'Disetujui' | 'Ditolak';
+}
+
+export interface ActivityLog {
+  ID_LOG: string;
+  Tanggal: string;
+  User: string; // Email or name
+  Aktivitas: string;
+  IP_Address: string;
+}
+
+export interface SettingItem {
+  Nama_Setting: string;
+  Nilai: string;
+}
+
+export interface AppSettings {
+  Jam_Masuk: string;      // e.g., "07:30"
+  Jam_Pulang: string;     // e.g., "16:00"
+  Radius_Default: number; // e.g., 100
+  Toleransi_Terlambat: number; // in minutes, e.g., 15
+  Nama_Sekolah?: string;
+  Nama_Yayasan?: string;
+  Logo_Url?: string;
 }

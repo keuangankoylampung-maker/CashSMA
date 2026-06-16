@@ -1,6 +1,6 @@
 {
-  "name": "Penerimaan Kas Sekolah",
-  "description": "Aplikasi penerimaan kas uang sekolah dengan cetak kuitansi otomatis, laporan bulanan, dan dashboard pemantauan status pembayaran terintegrasi Google Sheets.",
-  "requestFramePermissions": [],
+  "name": "Absensi Face Recognition",
+  "description": "Sistem Absensi Digital dengan Face Recognition, GPS Geofencing, Laporan Excel/PDF, dan Integrasi Google Sheets & Apps Script.",
+  "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
