@@ -190,6 +190,12 @@ export default function App() {
 
   // Active session
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Dynamically get the appropriate geofence location for the logged-in user's Unit Kerja
+  const currentUserLocation = (currentUser 
+    ? (locations.find(l => l.Nama_Lokasi.toLowerCase() === currentUser.Unit.toLowerCase() && l.Status === 'Aktif') || locations.find(l => l.Status === 'Aktif') || locations[0])
+    : locations[0]) || { ID_LOKASI: 'L_DEFAULT', Nama_Lokasi: 'SMP Negeri 1', Latitude: -6.2088, Longitude: 106.8456, Radius_Meter: 150, Status: 'Aktif' };
+
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [userCoordinates, setUserCoordinates] = useState<{lat: number, lon: number}>({ lat: -6.2100, lon: 106.8450 }); // SMP Negeri 1 vicinity
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'absen' | 'registrasi' | 'izin' | 'laporan' | 'setting' | 'gas_hub'>('dashboard');
@@ -209,8 +215,10 @@ export default function App() {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [showAddLocationModal, setShowAddLocationModal] = useState(false);
   const [newLocationForm, setNewLocationForm] = useState<Omit<Location, 'ID_LOKASI'>>({
-    Nama_Lokasi: '', Latitude: -6.2088, Longitude: 106.8456, Radius_Meter: 100, Status: 'Aktif'
+    Nama_Lokasi: 'SMP Negeri 1', Latitude: -6.2088, Longitude: 106.8456, Radius_Meter: 100, Status: 'Aktif'
   });
+
+  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
 
   // Admin leaving approval state
   const [izinFilter, setIzinFilter] = useState<'Semua' | 'Pending' | 'Disetujui' | 'Ditolak'>('Semua');
@@ -871,6 +879,21 @@ export default function App() {
     }
   };
 
+  const handleDeleteAttendance = (idAbsen: string, name: string, date: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus data absensi ${name} pada tanggal ${date}?`)) {
+      setAttendance(prev => prev.filter(a => a.ID_ABSEN !== idAbsen));
+      addLog(currentUser?.Email || 'Admin', `Menghapus Presensi: ${name} (${date})`);
+    }
+  };
+
+  const handleSaveAttendance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAttendance) return;
+    setAttendance(prev => prev.map(a => a.ID_ABSEN === editingAttendance.ID_ABSEN ? editingAttendance : a));
+    addLog(currentUser?.Email || 'Admin', `Mengedit Presensi: ${editingAttendance.Nama} (${editingAttendance.Tanggal})`);
+    setEditingAttendance(null);
+  };
+
   const handleSaveLocation = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingLocation) {
@@ -883,7 +906,7 @@ export default function App() {
       setLocations(prev => [...prev, added]);
       addLog(currentUser?.Email || 'Admin', `Menambah Geofence Lokasi Baru: ${added.Nama_Lokasi}`);
       setShowAddLocationModal(false);
-      setNewLocationForm({ Nama_Lokasi: '', Latitude: -6.2088, Longitude: 106.8456, Radius_Meter: 100, Status: 'Aktif' });
+      setNewLocationForm({ Nama_Lokasi: units[0] || '', Latitude: -6.2088, Longitude: 106.8456, Radius_Meter: 100, Status: 'Aktif' });
     }
   };
 
@@ -1487,10 +1510,10 @@ export default function App() {
                       <MyMap 
                         latitude={userCoordinates.lat}
                         longitude={userCoordinates.lon}
-                        officeLatitude={locations[0]?.Latitude || -6.2088}
-                        officeLongitude={locations[0]?.Longitude || 106.8456}
-                        radiusMeter={locations[0]?.Radius_Meter || 150}
-                        officeName={locations[0]?.Nama_Lokasi || 'SMP Negeri 1'}
+                        officeLatitude={currentUserLocation.Latitude}
+                        officeLongitude={currentUserLocation.Longitude}
+                        radiusMeter={currentUserLocation.Radius_Meter}
+                        officeName={currentUserLocation.Nama_Lokasi}
                       />
                     </div>
                   </div>
@@ -1625,10 +1648,10 @@ export default function App() {
                           <MyMap 
                             latitude={userCoordinates.lat}
                             longitude={userCoordinates.lon}
-                            officeLatitude={locations[0]?.Latitude || -6.2088}
-                            officeLongitude={locations[0]?.Longitude || 106.8456}
-                            radiusMeter={locations[0]?.Radius_Meter || 150}
-                            officeName={locations[0]?.Nama_Lokasi || 'SMP Negeri 1'}
+                            officeLatitude={currentUserLocation.Latitude}
+                            officeLongitude={currentUserLocation.Longitude}
+                            radiusMeter={currentUserLocation.Radius_Meter}
+                            officeName={currentUserLocation.Nama_Lokasi}
                           />
                         </div>
 
@@ -1639,16 +1662,16 @@ export default function App() {
                           </div>
                           <div className="flex justify-between">
                             <span>Titik Pusat Geofence:</span>
-                            <span className="font-mono font-bold text-slate-800">{locations[0]?.Latitude.toFixed(5)}, {locations[0]?.Longitude.toFixed(5)}</span>
+                            <span className="font-mono font-bold text-slate-800">{currentUserLocation.Latitude.toFixed(5)}, {currentUserLocation.Longitude.toFixed(5)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Radius Kerja Maks:</span>
-                            <span className="font-bold text-emerald-600">{locations[0]?.Radius_Meter || settings.Radius_Default} Meter</span>
+                            <span className="font-bold text-emerald-600">{currentUserLocation.Radius_Meter || settings.Radius_Default} Meter</span>
                           </div>
                           <div className="flex justify-between border-t border-slate-200/80 pt-2 font-semibold">
                             <span>Jarak Saat Ini (Presisi):</span>
                             <span className="font-mono text-blue-600 font-bold">
-                              {calculateDistance(userCoordinates.lat, userCoordinates.lon, locations[0]?.Latitude || -6.2088, locations[0]?.Longitude || 106.8456)} Meter
+                              {calculateDistance(userCoordinates.lat, userCoordinates.lon, currentUserLocation.Latitude, currentUserLocation.Longitude)} Meter
                             </span>
                           </div>
                         </div>
@@ -2322,12 +2345,13 @@ export default function App() {
                         <th className="py-3 px-2">Status</th>
                         <th className="py-3 px-4">Jarak Geofence</th>
                         <th className="py-3 px-2 text-right">Selfie Biometrik</th>
+                        <th className="py-3 px-2 text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredAttendance.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-10 text-center text-slate-400">
+                          <td colSpan={9} className="py-10 text-center text-slate-400">
                             Tidak ada data rekapitulasi yang cocok dengan kriteria filter terpilih.
                           </td>
                         </tr>
@@ -2374,6 +2398,24 @@ export default function App() {
                                   {item.Foto_Pulang && (
                                     <img src={item.Foto_Pulang} className="w-8 h-8 rounded-full border border-slate-100 object-cover" alt="Checkout" />
                                   )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-2 text-right">
+                                <div className="inline-flex gap-1.5 justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingAttendance(item)}
+                                    className="p-1 px-2 text-blue-600 hover:bg-blue-50 border border-blue-100 rounded-md transition text-[10px] font-bold font-mono cursor-pointer"
+                                  >
+                                    EDIT
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteAttendance(item.ID_ABSEN, item.Nama, item.Tanggal)}
+                                    className="p-1 px-2 text-red-500 hover:bg-red-50 border border-red-100 rounded-md transition text-[10px] font-bold font-mono cursor-pointer"
+                                  >
+                                    HAPUS
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -2788,10 +2830,24 @@ export default function App() {
                             alert("Unit kerja fungsional dengan nama tersebut sudah terdaftar!");
                             return;
                           }
+                          // 1. Tambahkan ke list Unit fungsional
                           setUnits(prev => [...prev, trimmed]);
-                          addLog(currentUser?.Email || 'Admin', `Menambahkan Unit Kerja Baru: ${trimmed}`);
+                          
+                          // 2. Otomatis buat titik Geofence berkeselarasan untuk Unit Kerja baru ini
+                          const customLocId = "L_" + Date.now();
+                          const defaultLocDetails: Location = {
+                            ID_LOKASI: customLocId,
+                            Nama_Lokasi: trimmed,
+                            Latitude: locations[0]?.Latitude || -6.2088,
+                            Longitude: locations[0]?.Longitude || 106.8456,
+                            Radius_Meter: settings.Radius_Default || 150,
+                            Status: 'Aktif'
+                          };
+                          setLocations(prev => [...prev, defaultLocDetails]);
+
+                          addLog(currentUser?.Email || 'Admin', `Menambahkan Unit Kerja: ${trimmed} & Sinkronisasi Geofence`);
                           setNewUnitName('');
-                          alert("Unit Kerja Baru Berhasil Disimpan!");
+                          alert(`Unit Kerja "${trimmed}" Berhasil Disimpan!\n\nSistem otomatis mengonfigurasi fungsional Titik Geofence default untuk Unit Kerja ini di dalam panel kelola.`);
                         }}
                         className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer font-mono"
                       >
@@ -2822,9 +2878,13 @@ export default function App() {
                                         alert("Gagal menghapus! Sistem wajib menyisakan minimal 1 unit kerja aktif.");
                                         return;
                                       }
-                                      if (confirm(`Apakah Anda yakin ingin menghapus Unit Kerja: "${u}"?\n\nAnggota yang sudah terdaftar di unit ini tetap mempertahankan datanya secara historis.`)) {
+                                      if (confirm(`Apakah Anda yakin ingin menghapus Unit Kerja: "${u}"?\n\nSistem juga akan membersihkan Titik Geofence yang terhubung dengan unit ini secara otomatis.`)) {
+                                        // Hapus Unit Kerja
                                         setUnits(prev => prev.filter(x => x !== u));
-                                        addLog(currentUser?.Email || 'Admin', `Menghapus unit kerja: ${u}`);
+                                        // Hapus Lokasi Geofence yang berkesesuaian
+                                        setLocations(prev => prev.filter(loc => loc.Nama_Lokasi !== u));
+                                        
+                                        addLog(currentUser?.Email || 'Admin', `Menghapus unit kerja dan geofence: ${u}`);
                                       }
                                     }}
                                     className="py-1 px-2.5 hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold rounded text-[11px] transition inline-flex items-center gap-1 ml-auto cursor-pointer"
@@ -3324,19 +3384,24 @@ export default function App() {
 
             <form onSubmit={handleSaveLocation} className="flex flex-col gap-3.5 text-xs">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-slate-500">NAMA LOKASI UNIT</label>
-                <input
-                  type="text"
+                <label className="text-[10px] font-mono text-slate-500">NAMA KOMPONEN UNIT KERJA (DEPARTEMEN)</label>
+                <select
                   required
-                  placeholder="Contoh: SMA Negeri 4"
-                  value={editingLocation ? editingLocation.Nama_Lokasi : newLocationForm.Nama_Lokasi}
+                  value={editingLocation ? editingLocation.Nama_Lokasi : (newLocationForm.Nama_Lokasi || units[0] || '')}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (editingLocation) setEditingLocation({ ...editingLocation, Nama_Lokasi: val });
                     else setNewLocationForm({ ...newLocationForm, Nama_Lokasi: val });
                   }}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
-                />
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-semibold"
+                >
+                  <option value="" disabled>-- Pilih Unit Kerja --</option>
+                  {units.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1">
@@ -3418,6 +3483,131 @@ export default function App() {
                   className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-xl hover:bg-slate-800 transition font-mono font-bold"
                 >
                   SIMPAN
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT ATTENDANCE MODAL --- */}
+      {editingAttendance && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl border border-slate-150 p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-scale-up">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h4 className="text-sm font-mono font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                <Edit2 className="w-4 h-4 text-emerald-500" /> SUNTING REKAPITULASI ABSENSI
+              </h4>
+              <button 
+                type="button" 
+                onClick={() => setEditingAttendance(null)} 
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAttendance} className="flex flex-col gap-3.5 text-xs">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-mono text-slate-500">NAMA ANGGOTA</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingAttendance.Nama}
+                  className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">TANGGAL PRESENSI</label>
+                  <input
+                    type="date"
+                    required
+                    value={editingAttendance.Tanggal}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Tanggal: e.target.value })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">STATUS KEHADIRAN</label>
+                  <select
+                    value={editingAttendance.Status}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Status: e.target.value as any })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Hadir">Hadir</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Alpha">Alpha</option>
+                    <option value="Dinas Luar">Dinas Luar</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">JAM MASUK</label>
+                  <input
+                    type="text"
+                    placeholder="HH:MM (Contoh: 07:30)"
+                    value={editingAttendance.Jam_Masuk || ''}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Jam_Masuk: e.target.value })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">JAM PULANG</label>
+                  <input
+                    type="text"
+                    placeholder="HH:MM (Contoh: 16:00)"
+                    value={editingAttendance.Jam_Pulang || ''}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Jam_Pulang: e.target.value })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">JARAK GEOFENCE (METER)</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingAttendance.Jarak}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Jarak: parseInt(e.target.value, 10) || 0 })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-mono text-slate-500">NAMA SHIFT KERJA</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Shift Reguler"
+                    value={editingAttendance.Nama_Shift || ''}
+                    onChange={(e) => setEditingAttendance({ ...editingAttendance, Nama_Shift: e.target.value })}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 mt-3 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingAttendance(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl transition font-mono"
+                >
+                  BATAL
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 border border-emerald-700 text-white rounded-xl hover:bg-emerald-500 transition font-mono font-bold"
+                >
+                  SIMPAN REKAP
                 </button>
               </div>
             </form>
